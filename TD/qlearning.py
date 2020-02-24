@@ -68,7 +68,6 @@ class QLearningAgent(object):
       an action to take given the state
     """
     legal_actions = self.legal_actions_fn(state)
-
     assert len(legal_actions) > 0, "no legal actions on state {}".format(state)
 
     if numpy.random.random() < self.epsilon:
@@ -79,8 +78,9 @@ class QLearningAgent(object):
         return self.policy[state]
       else:
         # set the first action in the list to default and return
-        self.policy[state] = legal_actions[0]
-        return legal_actions[0]
+        random_act = numpy.random.randint(0, len(legal_actions))
+        self.policy[state] = legal_actions[random_act]
+        return legal_actions[random_act]
 
 
   def learn(self, s, a, s1, r, is_done):
@@ -106,6 +106,8 @@ class QLearningAgent(object):
     # policy improvement
     legal_actions = self.legal_actions_fn(s)
     s_q_values = [self.get_qvalue(s,a) for a in legal_actions]
+    # print('sqvalues', s_q_values)
+    # print('learn:', legal_actions[s_q_values.index(max(s_q_values))])
     self.policy[s] = legal_actions[s_q_values.index(max(s_q_values))]
 
     self.epsilon = self.epsilon*self.epsilon_decay

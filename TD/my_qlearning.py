@@ -3,12 +3,15 @@ from gym import wrappers
 import qlearning
 import numpy
 import matplotlib.pyplot as plt
+import my_env
 
-NUM_EPISODES = 200
+
+NUM_EPISODES = 20000
 N_BINS = [8, 8, 8, 8]
-MAX_STEPS = 200
+MAX_STEPS =my_env.N_EDGES + 1
 FAIL_PENALTY = -100
-EPSILON = 0.5
+WIN_BONUS = 100
+EPSILON = 0.6
 EPSILON_DECAY = 0.99
 LEARNING_RATE = 0.05
 DISCOUNT_FACTOR = 0.9
@@ -17,12 +20,7 @@ RECORD = True
 
 MIN_VALUES = [-0.5, -2.0, -0.5, -3.0]
 MAX_VALUES = [0.5, 2.0, 0.5, 3.0]
-BINS = [numpy.linspace(MIN_VALUES[i], MAX_VALUES[i], N_BINS[i])
-        for i in xrange(4)]
 
-
-def discretize(obs):
-  return tuple([int(numpy.digitize(obs[i], BINS[i])) for i in xrange(4)])
 
 
 def train(agent, env, history, num_episodes=NUM_EPISODES):
@@ -30,16 +28,22 @@ def train(agent, env, history, num_episodes=NUM_EPISODES):
     if i % 100:
       print "Episode {}".format(i + 1)
     obs = env.reset()
-    cur_state = discretize(obs)
+    cur_state = obs
     
     for t in xrange(MAX_STEPS):
       action = agent.get_action(cur_state)
       observation, reward, done, info = env.step(action)
-      next_state = discretize(observation)
+      next_state = observation
       if done:
-        reward = FAIL_PENALTY
+        if info['win']:
+          print('WIN')
+          reward = WIN_BONUS
+        elif info['gameover']:
+          print('LOSE')
+          reward = FAIL_PENALTY
         agent.learn(cur_state, action, next_state, reward, done)
         print("Episode finished after {} timesteps".format(t + 1))
+        print('#################################\n')
         history.append(t + 1)
         break
       agent.learn(cur_state, action, next_state, reward, done)
@@ -50,11 +54,17 @@ def train(agent, env, history, num_episodes=NUM_EPISODES):
   return agent, history
 
 
-env = gym.make('CartPole-v0')
-if RECORD:
-  env = wrappers.Monitor(env, '/home/vbalogh/git/reinforcement_learning-stormmax/cartpole-experiment-1', force=True)
-def get_actions(state):
-  return [0, 1]
+env = my_env.MyEnv() #gym.make('CartPole-v0') # TODO myenv
+# if RECORD:
+#   env = wrappers.Monitor(env, '/home/vbalogh/git/reinforcement_learning-stormmax/my-experiment-1', force=True)
+
+def get_actions(current_state):
+  all_actions = list(range(my_env.N_EDGES))
+  if 0 in current_state:
+    current_pos = current_state.index(0)
+    del all_actions[current_pos]
+
+  return all_actions
 
 
 agent = qlearning.QLearningAgent(get_actions,
@@ -76,7 +86,7 @@ plt.plot(numpy.linspace(0, len(history), len(avg_reward)), avg_reward)
 plt.ylabel('Rewards')
 f_reward.show()
 print 'press enter to continue'
-raw_input()
+# raw_input()
 plt.close()
 
 
@@ -84,7 +94,7 @@ plt.close()
 print 'press ctrl-c to stop'
 while True:
   obs = env.reset()
-  cur_state = discretize(obs)
+  cur_state = obs
   done = False
 
   t = 0
@@ -92,12 +102,21 @@ while True:
     env.render()
     t = t+1
     action = agent.get_action(cur_state)
+    print('curr:', cur_state)
+    print('action: ', action)
     observation, reward, done, info = env.step(action)
-    next_state = discretize(observation)
+    next_state = observation
+    print('next:', next_state)
     if done:
-      reward = FAIL_PENALTY
+      if info['win']:
+        print('WIN')
+        reward = WIN_BONUS
+      elif info['gameover']:
+        print('LOSE')
+        reward = FAIL_PENALTY
       agent.learn(cur_state, action, next_state, reward, done)
       print("Episode finished after {} timesteps".format(t+1))
+      print('###################\n')
       history.append(t+1)
       break
     agent.learn(cur_state, action, next_state, reward, done)
